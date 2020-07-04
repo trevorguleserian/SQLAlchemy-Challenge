@@ -7,13 +7,14 @@ from sqlalchemy.orm import Session
 from sqlalchemy import create_engine, func
 from flask import Flask, jsonify
 
-engine = create_engine("sqlite:///hawaii.sqlite")
+engine = create_engine("sqlite:///Resources/hawaii.sqlite")
 
 Base = automap_base()
 
 Base.prepare(engine, reflect=True)
 
 Measurement = Base.classes.measurement
+
 Station = Base.classes.station
 
 
@@ -29,7 +30,8 @@ def Home():
         f"Available Routes:<br/>"
         f"/api/v1.0/precipitation<br/>"
         f"/api/v1.0/stations<br/>"
-        f"/api/v1.0/tobs"
+        f"/api/v1.0/tobs<br/>"
+        f"/api/v1.0/<start>"
     )
 
 
@@ -81,14 +83,30 @@ def tobs():
 
     return jsonify(Busy_temp)
 
+@app.route("/api/v1.0/<start>")
+def start(start):
 
+    session = Session(engine)
+    
+    date = dt.date(*(int(s) for s in start.split("-")))
+    
+    query_start = session.query(Measurement.station, func.min(Measurement.tobs),func.avg(Measurement.tobs),func.max(Measurement.tobs)).all()
 
+    session.close()
 
+    start_date_list = []
+    for station, min, avg, max in query_start:
+        date_dict = {}
+        date_dict["Station"] = station
+        date_dict["Min Temperature"] = min
+        date_dict["Avg Temperature"] = avg
+        date_dict["Max Temperature"] = max
+        start_date_list.append(date_dict)
 
-
-
-
-
+    if date >= dt.date(2010, 1, 1) and date <= dt.date(2017, 8, 23):
+        return jsonify(start_date_list)
+    else: 
+        return jsonify({"404 error"})
 
 if __name__ == '__main__':
     app.run(debug=True)
